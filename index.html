@@ -3,690 +3,441 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>arXiv Pulse — Today's Hot Research</title>
+<title>arXiv Pulse — Research Trend Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #12121a;
-    --surface-2: #1a1a26;
-    --border: #2a2a3a;
-    --text: #e8e8f0;
-    --text-dim: #8888a0;
-    --accent: #ff6b35;
-    --accent-glow: #ff6b3540;
-    --accent-2: #00d4aa;
-    --accent-3: #7c6aff;
-    --accent-4: #ff4d6a;
-    --accent-5: #ffd43b;
-    --radius: 12px;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Source Sans 3', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Noise texture overlay */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    opacity: 0.03;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 9999;
-  }
-
-  /* Gradient orbs */
-  .orb {
-    position: fixed;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    pointer-events: none;
-    z-index: 0;
-  }
-  .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; right: -200px; }
-  .orb-2 { width: 500px; height: 500px; background: var(--accent-3); bottom: -100px; left: -200px; }
-  .orb-3 { width: 400px; height: 400px; background: var(--accent-2); top: 50%; left: 50%; transform: translate(-50%, -50%); }
-
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 24px;
-    position: relative;
-    z-index: 1;
-  }
-
-  /* Header */
-  header {
-    padding: 48px 0 24px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 40px;
-  }
-
-  .header-top {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 20px;
-    flex-wrap: wrap;
-  }
-
-  .logo {
-    font-family: 'DM Serif Display', serif;
-    font-size: 3rem;
-    letter-spacing: -1px;
-    line-height: 1;
-  }
-
-  .logo span { color: var(--accent); }
-
-  .tagline {
-    font-size: 1.05rem;
-    color: var(--text-dim);
-    margin-top: 8px;
-    font-weight: 300;
-  }
-
-  .date-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--accent-2);
-    background: #00d4aa12;
-    border: 1px solid #00d4aa30;
-    padding: 6px 14px;
-    border-radius: 100px;
-    white-space: nowrap;
-  }
-
-  .pulse-dot {
-    display: inline-block;
-    width: 8px; height: 8px;
-    background: var(--accent-2);
-    border-radius: 50%;
-    margin-right: 6px;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 #00d4aa60; }
-    50% { opacity: 0.6; box-shadow: 0 0 0 8px #00d4aa00; }
-  }
-
-  /* API Config */
-  .api-config {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px 24px;
-    margin-bottom: 20px;
-  }
-
-  .api-row {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .api-field {
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .api-field label {
-    display: block;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  .key-input-wrap {
-    display: flex;
-    gap: 0;
-  }
-
-  .key-input-wrap input {
-    flex: 1;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.85rem;
-    padding: 10px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px 0 0 8px;
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .key-input-wrap input:focus { border-color: var(--accent); }
-
-  .toggle-vis {
-    padding: 10px 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--border);
-    border-left: none;
-    border-radius: 0 8px 8px 0;
-    cursor: pointer;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    transition: background 0.2s;
-  }
-
-  .toggle-vis:hover { background: var(--border); }
-
-  .api-field select {
-    width: 100%;
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 0.9rem;
-    padding: 10px 14px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text);
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-  }
-
-  .api-field select:focus { border-color: var(--accent); }
-
-  .api-hint {
-    margin-top: 10px;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-  }
-
-  .api-hint a {
-    color: var(--accent-2);
-    text-decoration: none;
-  }
-
-  .api-hint a:hover { text-decoration: underline; }
-
-  /* Controls */
-  .controls {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 32px;
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .field-btn {
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 8px 18px;
-    border-radius: 100px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.25s;
-  }
-
-  .field-btn:hover { border-color: var(--accent); color: var(--text); }
-  .field-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-    box-shadow: 0 0 20px var(--accent-glow);
-  }
-
-  .refresh-btn {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 8px 20px;
-    border-radius: 100px;
-    border: 1px solid var(--accent-2);
-    background: transparent;
-    color: var(--accent-2);
-    cursor: pointer;
-    margin-left: auto;
-    transition: all 0.25s;
-  }
-
-  .refresh-btn:hover {
-    background: var(--accent-2);
-    color: var(--bg);
-  }
-
-  .refresh-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-  }
-
-  /* Time range */
-  .time-row {
-    border-top: 1px solid var(--border);
-    padding-top: 16px;
-    margin-top: -16px;
-  }
-
-  .time-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    letter-spacing: 1.5px;
-    color: var(--text-dim);
-    margin-right: 4px;
-  }
-
-  .time-btn {
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 500;
-    padding: 8px 18px;
-    border-radius: 100px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-dim);
-    cursor: pointer;
-    transition: all 0.25s;
-  }
-
-  .time-btn:hover { border-color: var(--accent-2); color: var(--text); }
-  .time-btn.active {
-    background: var(--accent-2);
-    border-color: var(--accent-2);
-    color: #0a0a0f;
-    font-weight: 600;
-  }
-
-  /* Status */
-  .status-bar {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    padding: 16px 20px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 32px;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    overflow: hidden;
-  }
-
-  .status-bar.visible { display: flex; }
-
-  .spinner {
-    width: 16px; height: 16px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .status-text {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  /* Topic Sections */
-  .topics-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 36px;
-    padding-bottom: 80px;
-  }
-
-  .topic-section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    animation: fadeUp 0.5s ease-out both;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .topic-header {
-    padding: 24px 28px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .topic-icon {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    flex-shrink: 0;
-  }
-
-  .topic-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.4rem;
-    flex: 1;
-  }
-
-  .topic-count {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    background: var(--surface-2);
-    padding: 4px 10px;
-    border-radius: 100px;
-    border: 1px solid var(--border);
-  }
-
-  .papers-list {
-    padding: 8px;
-  }
-
-  .paper-card {
-    padding: 20px;
-    border-radius: 8px;
-    transition: background 0.2s;
-    cursor: pointer;
-    display: block;
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .paper-card:hover { background: var(--surface-2); }
-
-  .paper-title-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .paper-number {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    background: var(--bg);
-    width: 24px; height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-
-  .paper-title {
-    font-weight: 600;
-    font-size: 1rem;
-    line-height: 1.4;
-    flex: 1;
-  }
-
-  .paper-meta {
-    margin-top: 8px;
-    margin-left: 36px;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    line-height: 1.5;
-  }
-
-  .paper-authors {
-    font-style: italic;
-    margin-bottom: 4px;
-  }
-
-  .paper-tags {
-    display: flex;
-    gap: 6px;
-    margin-top: 8px;
-    flex-wrap: wrap;
-  }
-
-  .paper-tag {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    padding: 2px 8px;
-    border-radius: 4px;
-    background: var(--bg);
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-  }
-
-  /* Empty state */
-  .empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    color: var(--text-dim);
-  }
-
-  .empty-state h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 1.8rem;
-    color: var(--text);
-    margin-bottom: 12px;
-  }
-
-  .empty-state p { max-width: 500px; margin: 0 auto 24px; line-height: 1.6; }
-
-  .start-btn {
-    font-family: 'Source Sans 3', sans-serif;
-    font-size: 1rem;
-    font-weight: 600;
-    padding: 14px 36px;
-    border-radius: 100px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.25s;
-    box-shadow: 0 0 30px var(--accent-glow);
-  }
-
-  .start-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 40px var(--accent-glow);
-  }
-
-  /* Error */
-  .error-msg {
-    background: #ff4d6a15;
-    border: 1px solid #ff4d6a40;
-    color: var(--accent-4);
-    padding: 16px 20px;
-    border-radius: var(--radius);
-    font-size: 0.9rem;
-    margin-bottom: 24px;
-    display: none;
-  }
-
-  .error-msg.visible { display: block; }
-
-  /* Responsive */
-  @media (max-width: 640px) {
-    .logo { font-size: 2rem; }
-    .header-top { flex-direction: column; align-items: flex-start; }
-    .topic-header { padding: 18px 20px; }
-    .paper-card { padding: 16px; }
-    .paper-meta { margin-left: 0; }
-  }
+:root {
+  --bg: #06060c;
+  --surface: #0f0f18;
+  --surface-2: #161622;
+  --surface-3: #1e1e30;
+  --border: #252540;
+  --border-hi: #3a3a5c;
+  --text: #e4e4f0;
+  --text-dim: #7a7a96;
+  --text-muted: #55556e;
+  --accent: #ff6b35;
+  --accent-glow: #ff6b3530;
+  --green: #00d4aa;
+  --green-dim: #00d4aa20;
+  --purple: #7c6aff;
+  --purple-dim: #7c6aff20;
+  --red: #ff4d6a;
+  --yellow: #ffd43b;
+  --blue: #38bdf8;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.orb { position: fixed; border-radius: 50%; filter: blur(140px); opacity: 0.1; pointer-events: none; z-index: 0; }
+.orb-1 { width: 600px; height: 600px; background: var(--accent); top: -250px; right: -150px; }
+.orb-2 { width: 500px; height: 500px; background: var(--purple); bottom: -150px; left: -200px; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 0 28px; position: relative; z-index: 1; }
+
+/* ── Header ── */
+header { padding: 40px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+.header-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.logo { font-family: 'DM Serif Display', serif; font-size: 2.6rem; letter-spacing: -1px; line-height: 1; }
+.logo span { color: var(--accent); }
+.tagline { font-size: 0.95rem; color: var(--text-dim); margin-top: 6px; font-weight: 300; }
+.date-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  color: var(--green); background: var(--green-dim); border: 1px solid #00d4aa30;
+  padding: 5px 12px; border-radius: 100px; white-space: nowrap;
+}
+.pulse-dot {
+  display: inline-block; width: 7px; height: 7px;
+  background: var(--green); border-radius: 50%; margin-right: 5px;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; box-shadow:0 0 0 0 #00d4aa60; }
+  50% { opacity:0.5; box-shadow:0 0 0 6px #00d4aa00; }
+}
+
+/* ── API Config ── */
+.api-config {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 22px; margin-bottom: 20px;
+}
+.api-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.api-field { flex: 1; min-width: 180px; }
+.api-field label {
+  display: block; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); margin-bottom: 5px;
+}
+.key-wrap { display: flex; }
+.key-wrap input {
+  flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+  padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px 0 0 8px; color: var(--text); outline: none;
+}
+.key-wrap input:focus { border-color: var(--accent); }
+.key-wrap button {
+  padding: 9px 11px; background: var(--surface-2); border: 1px solid var(--border);
+  border-left: none; border-radius: 0 8px 8px 0; cursor: pointer;
+  font-size: 0.82rem; color: var(--text-dim);
+}
+.api-field select {
+  width: 100%; font-family: 'Source Sans 3', sans-serif; font-size: 0.88rem;
+  padding: 9px 12px; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); outline: none; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%237a7a96' d='M5 7L0 2h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.api-hint { margin-top: 8px; font-size: 0.73rem; color: var(--text-muted); }
+.api-hint a { color: var(--green); text-decoration: none; }
+
+/* ── Controls ── */
+.ctrl-row { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.field-btn {
+  font-family: 'Source Sans 3', sans-serif; font-size: 0.82rem; font-weight: 500;
+  padding: 7px 16px; border-radius: 100px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-dim); cursor: pointer; transition: all 0.2s;
+}
+.field-btn:hover { border-color: var(--accent); color: var(--text); }
+.field-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+.section-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+  letter-spacing: 1.5px; color: var(--text-muted); margin-right: 2px;
+}
+
+.time-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; font-weight: 600;
+  padding: 10px 22px; border-radius: var(--radius-sm);
+  border: 2px solid var(--border); background: var(--surface);
+  color: var(--text-dim); cursor: pointer; transition: all 0.25s;
+  position: relative;
+}
+.time-btn:hover { border-color: var(--green); color: var(--text); background: var(--surface-2); }
+.time-btn.active {
+  border-color: var(--green); background: var(--green-dim);
+  color: var(--green); box-shadow: 0 0 20px #00d4aa15;
+}
+.time-btn.loading { pointer-events: none; opacity: 0.6; }
+.time-btn .btn-sub {
+  display: block; font-size: 0.6rem; font-weight: 400;
+  color: var(--text-muted); margin-top: 2px; letter-spacing: 0;
+}
+
+/* ── Status ── */
+.status-bar {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+  color: var(--text-dim); padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 24px;
+  display: none; align-items: center; gap: 10px;
+}
+.status-bar.visible { display: flex; }
+.spinner {
+  width: 14px; height: 14px; border: 2px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-msg {
+  background: #ff4d6a12; border: 1px solid #ff4d6a30; color: var(--red);
+  padding: 14px 18px; border-radius: var(--radius); font-size: 0.88rem;
+  margin-bottom: 20px; display: none;
+}
+.error-msg.visible { display: block; }
+
+/* ── Dual Panel Layout ── */
+.dashboard { display: grid; grid-template-columns: 1fr 380px; gap: 24px; padding-bottom: 20px; }
+@media (max-width: 960px) { .dashboard { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.panel-head {
+  padding: 18px 22px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'DM Serif Display', serif; font-size: 1.15rem;
+}
+.panel-head .icon {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 1rem;
+}
+.panel-body { padding: 6px; }
+
+/* ── Topic Cards ── */
+.topic-card {
+  border-radius: var(--radius-sm); padding: 16px 18px; margin: 4px;
+  border: 1px solid transparent; cursor: pointer; transition: all 0.2s;
+}
+.topic-card:hover { background: var(--surface-2); border-color: var(--border); }
+.topic-card.expanded { background: var(--surface-2); border-color: var(--border-hi); }
+
+.topic-top { display: flex; align-items: center; gap: 12px; }
+.topic-rank {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: var(--text-muted); background: var(--bg);
+  width: 22px; height: 22px; display: flex; align-items: center;
+  justify-content: center; border-radius: 6px; flex-shrink: 0;
+}
+.topic-name { flex: 1; font-weight: 600; font-size: 0.95rem; }
+.topic-stats { display: flex; gap: 8px; align-items: center; }
+.stat-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+  padding: 3px 8px; border-radius: 100px;
+}
+.stat-papers { background: var(--purple-dim); color: var(--purple); }
+
+.topic-desc {
+  font-size: 0.82rem; color: var(--text-dim); margin: 8px 0 0 34px; line-height: 1.45;
+}
+
+.topic-expand-hint {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+  color: var(--text-muted); margin: 6px 0 0 34px;
+}
+.topic-card.expanded .topic-expand-hint { display: none; }
+
+.topic-papers {
+  margin: 12px 0 0 34px; display: none;
+  border-top: 1px solid var(--border); padding-top: 10px;
+}
+.topic-card.expanded .topic-papers { display: block; }
+
+.paper-item {
+  display: block; text-decoration: none; color: inherit;
+  padding: 10px 12px; border-radius: 6px; margin-bottom: 2px; transition: background 0.15s;
+}
+.paper-item:hover { background: var(--surface-3); }
+.paper-item-title { font-size: 0.88rem; font-weight: 500; line-height: 1.35; color: var(--text); }
+.paper-item-meta {
+  font-size: 0.75rem; color: var(--text-dim); margin-top: 4px;
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.paper-item-meta .tag {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.62rem;
+  padding: 1px 6px; border-radius: 3px; background: var(--bg);
+  border: 1px solid var(--border); color: var(--text-dim);
+}
+
+/* ── Keywords Panel ── */
+.kw-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 18px; border-bottom: 1px solid #ffffff06;
+  transition: background 0.15s;
+}
+.kw-item:last-child { border-bottom: none; }
+.kw-item:hover { background: var(--surface-2); }
+
+.kw-rank {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;
+  color: var(--text-muted); width: 22px; text-align: right; flex-shrink: 0;
+}
+.kw-rank.top3 { color: var(--yellow); font-weight: 600; }
+
+.kw-bar-wrap { flex: 1; min-width: 0; }
+.kw-text { font-size: 0.88rem; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kw-cat {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.58rem;
+  display: inline-block; padding: 1px 5px; border-radius: 3px;
+  background: var(--surface-3); color: var(--text-muted); margin-left: 6px;
+  vertical-align: middle;
+}
+.kw-bar-bg { height: 4px; background: var(--surface-3); border-radius: 2px; overflow: hidden; }
+.kw-bar { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+.kw-score {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+  color: var(--text-muted); flex-shrink: 0; width: 36px; text-align: right;
+}
+
+/* ── Empty / Loading ── */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+.empty-state h2 { font-family: 'DM Serif Display', serif; font-size: 1.5rem; color: var(--text); margin-bottom: 10px; }
+.empty-state p { max-width: 460px; margin: 0 auto; line-height: 1.55; font-size: 0.92rem; }
+
+.panel-loading { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+.skel-line { height: 13px; border-radius: 4px; background: var(--surface-3); animation: shimmer 1.4s ease-in-out infinite alternate; }
+@keyframes shimmer { from { opacity:0.25; } to { opacity:0.6; } }
+
+.dash-footer {
+  text-align: center; padding: 16px 0 40px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* ── Total summary bar ── */
+.summary-bar {
+  display: flex; gap: 16px; flex-wrap: wrap; padding: 14px 22px;
+  border-bottom: 1px solid var(--border); align-items: center;
+}
+.summary-stat {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem;
+  color: var(--text-dim);
+}
+.summary-stat strong {
+  font-size: 1.1rem; font-weight: 700; margin-right: 3px;
+}
+
+@media (max-width: 640px) {
+  .logo { font-size: 2rem; }
+  .header-top { flex-direction: column; align-items: flex-start; }
+  .dashboard { gap: 16px; }
+  .time-btn { padding: 8px 14px; font-size: 0.72rem; }
+}
 </style>
 </head>
 <body>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
 
-  <div class="container">
-    <header>
-      <div class="header-top">
-        <div>
-          <div class="logo">arXiv<span>Pulse</span></div>
-          <p class="tagline">AI-powered discovery of today's hottest research topics</p>
-        </div>
-        <div class="date-badge">
-          <span class="pulse-dot"></span>
-          <span id="todayDate"></span>
+<div class="container">
+  <header>
+    <div class="header-top">
+      <div>
+        <div class="logo">arXiv<span>Pulse</span></div>
+        <p class="tagline">AI-powered research trends — topic stats & search keyword analysis</p>
+      </div>
+      <div class="date-badge"><span class="pulse-dot"></span><span id="todayDate"></span></div>
+    </div>
+  </header>
+
+  <div class="api-config">
+    <div class="api-row">
+      <div class="api-field">
+        <label>OpenRouter API Key</label>
+        <div class="key-wrap">
+          <input type="password" id="apiKey" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off" />
+          <button onclick="let i=document.getElementById('apiKey');i.type=i.type==='password'?'text':'password'">👁</button>
         </div>
       </div>
-    </header>
-
-    <!-- API Key Config -->
-    <div class="api-config" id="apiConfig">
-      <div class="api-row">
-        <div class="api-field">
-          <label for="apiKey">OpenRouter API Key</label>
-          <div class="key-input-wrap">
-            <input type="password" id="apiKey" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off" />
-            <button class="toggle-vis" onclick="toggleKeyVis()" title="Show/hide key">👁</button>
-          </div>
-        </div>
-        <div class="api-field">
-          <label for="modelSelect">Model</label>
-          <select id="modelSelect">
-            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
-            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-            <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
-            <option value="openai/gpt-4o">GPT-4o</option>
-            <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3</option>
-            <option value="meta-llama/llama-4-maverick">Llama 4 Maverick</option>
-          </select>
-        </div>
-      </div>
-      <p class="api-hint">Your key stays in your browser only. Get one free at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
-    </div>
-
-    <div class="controls" id="controls">
-      <button class="field-btn active" data-field="cs.AI">AI</button>
-      <button class="field-btn active" data-field="cs.LG">Machine Learning</button>
-      <button class="field-btn" data-field="cs.CL">NLP</button>
-      <button class="field-btn" data-field="cs.CV">Computer Vision</button>
-      <button class="field-btn" data-field="cs.RO">Robotics</button>
-      <button class="field-btn" data-field="physics">Physics</button>
-      <button class="field-btn" data-field="math">Math</button>
-      <button class="field-btn" data-field="q-bio">Biology</button>
-    </div>
-
-    <div class="controls time-row">
-      <span class="time-label">TIME RANGE</span>
-      <button class="time-btn active" data-months="1">Past 1 Month</button>
-      <button class="time-btn" data-months="3">Past 3 Months</button>
-      <button class="time-btn" data-months="5">Past 5 Months</button>
-      <button class="refresh-btn" id="refreshBtn" onclick="startDiscovery()">▶ DISCOVER</button>
-    </div>
-
-    <div class="error-msg" id="errorMsg"></div>
-    <div class="status-bar" id="statusBar">
-      <div class="spinner"></div>
-      <span class="status-text" id="statusText">Initializing...</span>
-    </div>
-
-    <div id="content">
-      <div class="empty-state" id="emptyState">
-        <h2>Ready to explore?</h2>
-        <p>Select your fields of interest above, then hit Discover. Claude will search arXiv for the latest trending topics and papers in real-time.</p>
-        <button class="start-btn" onclick="startDiscovery()">Discover Today's Hot Papers</button>
+      <div class="api-field">
+        <label>Model</label>
+        <select id="modelSelect">
+          <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+          <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+          <option value="openai/gpt-4o">GPT-4o</option>
+          <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3</option>
+        </select>
       </div>
     </div>
-
-    <div class="topics-grid" id="topicsGrid" style="display:none;"></div>
+    <p class="api-hint">Key stays in your browser only. Get one at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
   </div>
 
+  <div class="ctrl-row">
+    <span class="section-label">FIELDS</span>
+    <button class="field-btn active" data-field="cs.AI">AI</button>
+    <button class="field-btn active" data-field="cs.LG">Machine Learning</button>
+    <button class="field-btn" data-field="cs.CL">NLP</button>
+    <button class="field-btn" data-field="cs.CV">Computer Vision</button>
+    <button class="field-btn" data-field="cs.RO">Robotics</button>
+    <button class="field-btn" data-field="physics">Physics</button>
+    <button class="field-btn" data-field="math">Math</button>
+    <button class="field-btn" data-field="q-bio">Biology</button>
+  </div>
+
+  <div class="ctrl-row" style="margin-bottom:24px;">
+    <span class="section-label">RANGE</span>
+    <button class="time-btn" data-months="1">Past 1 Month<span class="btn-sub">click to scan</span></button>
+    <button class="time-btn" data-months="3">Past 3 Months<span class="btn-sub">click to scan</span></button>
+    <button class="time-btn" data-months="5">Past 5 Months<span class="btn-sub">click to scan</span></button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+  <div class="status-bar" id="statusBar">
+    <div class="spinner"></div>
+    <span id="statusText"></span>
+  </div>
+
+  <div id="emptyState" class="empty-state">
+    <h2>Select a time range to begin</h2>
+    <p>Choose your fields of interest, then click a time range button. AI will automatically search for arXiv trending topics with paper stats, and the top 20 Google search keywords.</p>
+  </div>
+
+  <div class="dashboard" id="dashboard" style="display:none;">
+    <div class="panel" id="topicsPanel">
+      <div class="panel-head">
+        <div class="icon" style="background:var(--purple-dim);color:var(--purple);">📊</div>
+        <span>Trending Topics</span>
+        <span id="topicRange" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-muted);"></span>
+      </div>
+      <div class="summary-bar" id="summaryBar" style="display:none;"></div>
+      <div class="panel-body" id="topicsBody"></div>
+    </div>
+
+    <div class="panel" id="kwPanel">
+      <div class="panel-head">
+        <div class="icon" style="background:#38bdf820;color:var(--blue);">🔍</div>
+        <span>Google Hot Keywords</span>
+        <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--text-muted);">TOP 20</span>
+      </div>
+      <div class="panel-body" id="kwBody" style="padding:0;"></div>
+    </div>
+  </div>
+
+  <div class="dash-footer" id="dashFooter" style="display:none;"></div>
+</div>
+
 <script>
-// -- Config --
-const TOPIC_COLORS = [
-  { bg: '#ff6b3518', border: '#ff6b3550', text: '#ff6b35' },
-  { bg: '#00d4aa18', border: '#00d4aa50', text: '#00d4aa' },
-  { bg: '#7c6aff18', border: '#7c6aff50', text: '#7c6aff' },
-  { bg: '#ff4d6a18', border: '#ff4d6a50', text: '#ff4d6a' },
-  { bg: '#ffd43b18', border: '#ffd43b50', text: '#ffd43b' },
-  { bg: '#38bdf818', border: '#38bdf850', text: '#38bdf8' },
-];
-
-const TOPIC_EMOJIS = ['🔬','🧠','💡','⚡','🌐','🔭','🧬','📐','🤖','🎯','🔮','📊'];
-
-// -- State --
 let isRunning = false;
 
-// -- Date --
 document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', {
-  weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+  weekday:'short', year:'numeric', month:'short', day:'numeric'
 });
 
-// -- Load saved API key from memory --
-const savedKey = '';
-// We don't use localStorage; key must be entered each session.
+document.querySelectorAll('.field-btn').forEach(btn =>
+  btn.addEventListener('click', () => btn.classList.toggle('active'))
+);
 
-// -- Toggle key visibility --
-function toggleKeyVis() {
-  const inp = document.getElementById('apiKey');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
-}
-
-// -- Field buttons --
-document.querySelectorAll('.field-btn').forEach(btn => {
-  btn.addEventListener('click', () => btn.classList.toggle('active'));
-});
-
-// -- Time range buttons (single select) --
 document.querySelectorAll('.time-btn').forEach(btn => {
   btn.addEventListener('click', () => {
+    if (isRunning) return;
     document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    startDiscovery(parseInt(btn.dataset.months));
   });
 });
 
-function getSelectedMonths() {
-  const active = document.querySelector('.time-btn.active');
-  return active ? parseInt(active.dataset.months) : 1;
+function setStatus(msg, show=true) {
+  document.getElementById('statusBar').classList.toggle('visible', show);
+  document.getElementById('statusText').textContent = msg;
+}
+function showError(msg) { const e=document.getElementById('errorMsg'); e.textContent=msg; e.classList.add('visible'); }
+function clearError() { document.getElementById('errorMsg').classList.remove('visible'); }
+
+function showSkeleton() {
+  const lines = [92,68,85,55,78,48,88,62,74,50].map(w =>
+    `<div class="skel-line" style="width:${w}%"></div>`
+  ).join('');
+  const tpl = `<div class="panel-loading">${lines}</div>`;
+  document.getElementById('topicsBody').innerHTML = tpl;
+  document.getElementById('kwBody').innerHTML = tpl;
 }
 
-// -- Helpers --
-function setStatus(msg, show = true) {
-  const bar = document.getElementById('statusBar');
-  const text = document.getElementById('statusText');
-  bar.classList.toggle('visible', show);
-  text.textContent = msg;
-}
-
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.classList.add('visible');
-}
-
-function clearError() {
-  document.getElementById('errorMsg').classList.remove('visible');
-}
-
-function getSelectedFields() {
-  return [...document.querySelectorAll('.field-btn.active')].map(b => b.dataset.field);
-}
-
-// -- OpenRouter API call --
 async function callLLM(userPrompt, systemPrompt) {
   const apiKey = document.getElementById('apiKey').value.trim();
   const model = document.getElementById('modelSelect').value;
-
-  if (!apiKey) {
-    throw new Error('Please enter your OpenRouter API key first.');
-  }
+  if (!apiKey) throw new Error('Please enter your OpenRouter API key.');
 
   const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -697,225 +448,258 @@ async function callLLM(userPrompt, systemPrompt) {
       'X-Title': 'arXiv Pulse'
     },
     body: JSON.stringify({
-      model: model,
-      max_tokens: 4000,
-      temperature: 0.4,
+      model, max_tokens: 5000, temperature: 0.3,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
       ],
-      // Enable web search via OpenRouter plugins
       plugins: [{ id: 'web' }]
     })
   });
 
   if (!resp.ok) {
     const err = await resp.text();
-    let errMsg = `API error ${resp.status}`;
-    try {
-      const parsed = JSON.parse(err);
-      errMsg = parsed.error?.message || errMsg;
-    } catch(e) {}
-    throw new Error(errMsg);
+    let msg = `API ${resp.status}`;
+    try { msg = JSON.parse(err).error?.message || msg; } catch(e){}
+    throw new Error(msg);
   }
-
   return resp.json();
 }
 
 function extractText(data) {
-  // OpenRouter returns OpenAI-compatible format
-  if (data.choices && data.choices.length > 0) {
-    return data.choices[0].message?.content || '';
-  }
-  return '';
+  return data.choices?.[0]?.message?.content || '';
 }
 
-// -- Main Discovery Flow --
-async function startDiscovery() {
+function parseJSON(text) {
+  text = text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  try { return JSON.parse(text); } catch(e) {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]);
+    throw new Error('Could not parse AI response. Try a different model.');
+  }
+}
+
+async function startDiscovery(months) {
   if (isRunning) return;
   isRunning = true;
-
-  const fields = getSelectedFields();
-  if (fields.length === 0) {
-    showError('Please select at least one field.');
-    isRunning = false;
-    return;
-  }
-
-  const apiKey = document.getElementById('apiKey').value.trim();
-  if (!apiKey) {
-    showError('Please enter your OpenRouter API key above.');
-    isRunning = false;
-    return;
-  }
-
   clearError();
+
+  const fields = [...document.querySelectorAll('.field-btn.active')];
+  if (!fields.length) { showError('Please select at least one field.'); isRunning=false; return; }
+
+  const fieldLabels = fields.map(b => b.textContent);
+  const modelName = document.getElementById('modelSelect').value.split('/').pop();
+
   document.getElementById('emptyState').style.display = 'none';
-  document.getElementById('topicsGrid').style.display = 'flex';
-  document.getElementById('topicsGrid').innerHTML = '';
-  document.getElementById('refreshBtn').disabled = true;
+  document.getElementById('dashboard').style.display = 'grid';
+  document.getElementById('dashFooter').style.display = 'block';
+  document.getElementById('topicRange').textContent = `Past ${months}mo`;
+  document.getElementById('summaryBar').style.display = 'none';
+  showSkeleton();
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.add('loading'));
 
-  const fieldLabels = [...document.querySelectorAll('.field-btn.active')].map(b => b.textContent);
-  const model = document.getElementById('modelSelect').value.split('/').pop();
-  const months = getSelectedMonths();
-
-  // Calculate date range
   const now = new Date();
-  const startDate = new Date(now);
-  startDate.setMonth(startDate.getMonth() - months);
-  const startStr = startDate.toISOString().split('T')[0];
+  const start = new Date(now); start.setMonth(start.getMonth() - months);
   const todayStr = now.toISOString().split('T')[0];
-  const rangeLabel = months === 1 ? 'past month' : `past ${months} months`;
+  const startStr = start.toISOString().split('T')[0];
+  const rangeLabel = months === 1 ? 'past 1 month' : `past ${months} months`;
 
   try {
-    // Step 1: Discover hot topics
-    setStatus(`[${model}] Searching arXiv for trending papers (${rangeLabel}) in ${fieldLabels.join(', ')}...`);
+    setStatus(`[${modelName}] Searching arXiv topics & Google keywords (${rangeLabel})...`);
 
-    const systemPrompt = `You are a research trend discovery engine. You search the web for arXiv papers and academic discussions within a specific time window, then return structured JSON.
+    const sysPrompt = `You are an academic research trend analyst with web search ability. Search the web thoroughly, then return ONLY a valid JSON object. No markdown, no backticks, no explanation. Start with { end with }.`;
 
-IMPORTANT: You MUST return ONLY a valid JSON array. No markdown code fences, no explanation, no preamble. Start your response with [ and end with ].`;
+    const userPrompt = `Today is ${todayStr}. Analyze research trends for: ${fieldLabels.join(', ')}.
+Time window: ${startStr} to ${todayStr} (${rangeLabel}).
 
-    const userPrompt = `Today is ${todayStr}. Search the web for the most TRENDING and POPULAR arXiv papers in these fields: ${fieldLabels.join(', ')}.
+══ TASK 1: arXiv Hot Topics with Paper Stats ══
+Search arXiv, HuggingFace Daily Papers, Reddit r/MachineLearning, Twitter/X ML community, and Papers With Code to find the most popular topics and papers in the ${rangeLabel}.
 
-TIME RANGE: Only include papers published between ${startStr} and ${todayStr} (the ${rangeLabel}). This is critical — do NOT include papers outside this window.
+For each topic cluster:
+- Give a clear topic name
+- Count how many related papers you can find (paper_count should reflect actual volume, not just what you list)
+- List the top representative papers with details
 
-Look for:
-- Papers posted on arXiv within this ${rangeLabel} time window
-- Papers generating buzz on social media (Twitter/X, Reddit, HuggingFace)
-- Papers from major labs (Google, Meta, OpenAI, DeepMind, Microsoft, Apple, etc.)
-- Breakthrough results, state-of-the-art methods, novel architectures
-- Most cited or discussed papers within this period
+══ TASK 2: Google Search Top 20 Keywords ══
+Search Google Trends and the web to identify the TOP 20 most frequently searched research-related keywords in ${fieldLabels.join(', ')} during the ${rangeLabel}.
 
-Search arXiv, Hugging Face papers page, Twitter/X discussions about new papers, Reddit r/MachineLearning, and Papers With Code.
+These should be specific terms researchers and practitioners are actively Googling, such as:
+- Model names (e.g. DeepSeek-R1, Gemini 2.5, Llama 4)
+- Techniques (e.g. chain-of-thought, GRPO, test-time compute)
+- Concepts (e.g. mixture of experts, KV cache, reasoning models)
+- Tools/frameworks (e.g. vLLM, SGLang, LangGraph)
+- Research areas (e.g. world models, video generation, AI agents)
 
-Return a JSON array of 4-8 trending topic clusters. For a ${months}-month window, aim for more topics and more papers per topic. Each element:
+Return this exact JSON structure:
 {
-  "topic": "Short topic name (2-5 words)",
-  "description": "One sentence describing why this is trending",
-  "papers": [
+  "topics": [
     {
-      "title": "Exact paper title",
-      "authors": "First Author et al.",
-      "arxiv_id": "2503.XXXXX or empty string",
-      "abstract_snippet": "1-2 sentence key finding",
-      "field": "cs.AI",
-      "date": "YYYY-MM-DD"
+      "topic": "Short Topic Name",
+      "description": "Why this is trending in one sentence",
+      "paper_count": 25,
+      "papers": [
+        {
+          "title": "Full Paper Title",
+          "authors": "First Author et al.",
+          "arxiv_id": "2503.XXXXX",
+          "abstract_snippet": "One sentence key finding",
+          "field": "cs.AI",
+          "date": "2025-03-01"
+        }
+      ]
+    }
+  ],
+  "keywords": [
+    {
+      "keyword": "keyword or phrase",
+      "score": 95,
+      "category": "Model|Technique|Tool|Concept|Dataset|Framework|Area"
     }
   ]
 }
 
-${months >= 3 ? 'Since this is a longer time range, include 5-8 topic clusters with 3-5 papers each to give a comprehensive overview.' : 'Include 4-6 topic clusters with 2-4 papers each.'}
-Return ONLY the JSON array.`;
+Requirements:
+- topics: ${months >= 3 ? '6-10 topics with 3-6 representative papers each' : '4-7 topics with 2-5 representative papers each'}
+- paper_count: should be your best estimate of TOTAL papers in this topic area, not just the ones you list
+- keywords: exactly 20 items, score 0-100 relative popularity (highest=100), sorted by score descending
+- All papers must be from ${startStr} to ${todayStr} only
+- Return ONLY the JSON, nothing else`;
 
-    const result = await callLLM(userPrompt, systemPrompt);
+    const result = await callLLM(userPrompt, sysPrompt);
+    setStatus('Parsing results...');
 
-    setStatus('Analyzing and organizing results...');
+    const data = parseJSON(extractText(result));
+    const topics = data.topics || [];
+    const keywords = data.keywords || [];
 
-    let text = extractText(result);
-
-    // Clean potential markdown fences
-    text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-
-    let topics;
-    try {
-      topics = JSON.parse(text);
-    } catch (e) {
-      // Try to extract JSON array from text
-      const match = text.match(/\[[\s\S]*\]/);
-      if (match) {
-        topics = JSON.parse(match[0]);
-      } else {
-        console.error('Raw response:', text);
-        throw new Error('Could not parse topics from AI response. The model may not support web search — try a different model.');
-      }
+    if (!topics.length && !keywords.length) {
+      throw new Error('No results. Try a different model or time range.');
     }
 
-    if (!Array.isArray(topics) || topics.length === 0) {
-      throw new Error('No topics discovered. Try different fields or a different model.');
-    }
-
-    // Step 2: Render topics
-    setStatus('Rendering results...', true);
     renderTopics(topics);
+    renderKeywords(keywords);
+
+    const totalPapers = topics.reduce((s,t) => s + (t.paper_count || t.papers?.length || 0), 0);
+    const listedPapers = topics.reduce((s,t) => s + (t.papers?.length || 0), 0);
+
+    // Summary bar
+    const sb = document.getElementById('summaryBar');
+    sb.style.display = 'flex';
+    sb.innerHTML = `
+      <span class="summary-stat"><strong style="color:var(--purple);">${topics.length}</strong>topics</span>
+      <span class="summary-stat"><strong style="color:var(--green);">${totalPapers}</strong>est. papers</span>
+      <span class="summary-stat"><strong style="color:var(--accent);">${listedPapers}</strong>listed</span>
+    `;
+
+    document.getElementById('dashFooter').textContent =
+      `${rangeLabel} · ${document.getElementById('modelSelect').value} via OpenRouter · ${new Date().toLocaleTimeString()}`;
+
     setStatus('', false);
 
-  } catch (err) {
+  } catch(err) {
     console.error(err);
-    showError(`Discovery failed: ${err.message}`);
+    showError(`Failed: ${err.message}`);
     setStatus('', false);
+    document.getElementById('topicsBody').innerHTML = '';
+    document.getElementById('kwBody').innerHTML = '';
   }
 
-  document.getElementById('refreshBtn').disabled = false;
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('loading'));
   isRunning = false;
 }
 
+// ── Render Topics ──
 function renderTopics(topics) {
-  const grid = document.getElementById('topicsGrid');
-  grid.innerHTML = '';
+  const body = document.getElementById('topicsBody');
+  body.innerHTML = '';
+  if (!topics.length) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-dim);">No topics found.</div>';
+    return;
+  }
 
-  topics.forEach((topic, ti) => {
-    const color = TOPIC_COLORS[ti % TOPIC_COLORS.length];
-    const emoji = TOPIC_EMOJIS[ti % TOPIC_EMOJIS.length];
-    const papers = topic.papers || [];
+  topics.sort((a,b) => (b.paper_count||b.papers?.length||0) - (a.paper_count||a.papers?.length||0));
 
-    const section = document.createElement('div');
-    section.className = 'topic-section';
-    section.style.animationDelay = `${ti * 0.1}s`;
+  topics.forEach((t, i) => {
+    const papers = t.papers || [];
+    const count = t.paper_count || papers.length;
+    const card = document.createElement('div');
+    card.className = 'topic-card';
+    card.addEventListener('click', e => {
+      if (e.target.closest('.paper-item')) return;
+      card.classList.toggle('expanded');
+    });
 
-    const papersHTML = papers.map((p, pi) => {
-      const link = p.arxiv_id
-        ? `https://arxiv.org/abs/${p.arxiv_id}`
-        : `https://arxiv.org/search/?query=${encodeURIComponent(p.title)}&searchtype=all`;
-
-      return `
-        <a class="paper-card" href="${link}" target="_blank" rel="noopener">
-          <div class="paper-title-row">
-            <span class="paper-number">${pi + 1}</span>
-            <span class="paper-title">${escapeHTML(p.title)}</span>
-          </div>
-          <div class="paper-meta">
-            ${p.authors ? `<div class="paper-authors">${escapeHTML(p.authors)}</div>` : ''}
-            ${p.abstract_snippet ? `<div>${escapeHTML(p.abstract_snippet)}</div>` : ''}
-            <div class="paper-tags">
-              ${p.field ? `<span class="paper-tag">${escapeHTML(p.field)}</span>` : ''}
-              ${p.date ? `<span class="paper-tag">${escapeHTML(p.date)}</span>` : ''}
-              ${p.arxiv_id ? `<span class="paper-tag">${escapeHTML(p.arxiv_id)}</span>` : ''}
-            </div>
-          </div>
-        </a>`;
-    }).join('');
-
-    section.innerHTML = `
-      <div class="topic-header">
-        <div class="topic-icon" style="background:${color.bg}; border:1px solid ${color.border}; color:${color.text}">
-          ${emoji}
+    card.innerHTML = `
+      <div class="topic-top">
+        <span class="topic-rank">${i+1}</span>
+        <span class="topic-name">${esc(t.topic)}</span>
+        <div class="topic-stats">
+          <span class="stat-badge stat-papers">${count} papers</span>
         </div>
-        <span class="topic-title">${escapeHTML(topic.topic)}</span>
-        <span class="topic-count">${papers.length} paper${papers.length !== 1 ? 's' : ''}</span>
       </div>
-      ${topic.description ? `<div style="padding:12px 28px 0; color:var(--text-dim); font-size:0.9rem;">${escapeHTML(topic.description)}</div>` : ''}
-      <div class="papers-list">
-        ${papersHTML}
+      ${t.description ? `<div class="topic-desc">${esc(t.description)}</div>` : ''}
+      <div class="topic-expand-hint">▸ click to expand ${papers.length} listed papers</div>
+      <div class="topic-papers">
+        ${papers.map(p => {
+          const link = p.arxiv_id
+            ? `https://arxiv.org/abs/${p.arxiv_id}`
+            : `https://arxiv.org/search/?query=${encodeURIComponent(p.title)}&searchtype=all`;
+          return `<a class="paper-item" href="${link}" target="_blank" rel="noopener">
+            <div class="paper-item-title">${esc(p.title)}</div>
+            <div class="paper-item-meta">
+              ${p.authors ? `<span>${esc(p.authors)}</span>` : ''}
+              ${p.field ? `<span class="tag">${esc(p.field)}</span>` : ''}
+              ${p.date ? `<span class="tag">${esc(p.date)}</span>` : ''}
+              ${p.arxiv_id ? `<span class="tag">${esc(p.arxiv_id)}</span>` : ''}
+            </div>
+            ${p.abstract_snippet ? `<div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px;line-height:1.4;">${esc(p.abstract_snippet)}</div>` : ''}
+          </a>`;
+        }).join('') || '<div style="color:var(--text-muted);font-size:0.82rem;padding:8px 0;">No details available.</div>'}
       </div>`;
 
-    grid.appendChild(section);
+    body.appendChild(card);
   });
-
-  // Show model/time info
-  const model = document.getElementById('modelSelect').value;
-  const months = getSelectedMonths();
-  const rangeText = months === 1 ? 'Past 1 month' : `Past ${months} months`;
-  const infoDiv = document.createElement('div');
-  infoDiv.style.cssText = 'text-align:center; padding:20px; font-family:JetBrains Mono,monospace; font-size:0.72rem; color:var(--text-dim);';
-  infoDiv.textContent = `${rangeText} · Generated by ${model} via OpenRouter · ${new Date().toLocaleTimeString()}`;
-  grid.appendChild(infoDiv);
 }
 
-function escapeHTML(str) {
-  if (!str) return '';
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+// ── Render Keywords ──
+const KW_COLORS = ['#ff6b35','#00d4aa','#7c6aff','#ff4d6a','#ffd43b','#38bdf8'];
+
+function renderKeywords(keywords) {
+  const body = document.getElementById('kwBody');
+  body.innerHTML = '';
+  if (!keywords.length) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-dim);">No keywords found.</div>';
+    return;
+  }
+
+  const maxScore = Math.max(...keywords.map(k => k.score || 0), 1);
+
+  keywords.forEach((k, i) => {
+    const pct = ((k.score || 0) / maxScore * 100).toFixed(0);
+    const color = KW_COLORS[i % KW_COLORS.length];
+    const item = document.createElement('div');
+    item.className = 'kw-item';
+    item.innerHTML = `
+      <span class="kw-rank ${i < 3 ? 'top3' : ''}">${i+1}</span>
+      <div class="kw-bar-wrap">
+        <div class="kw-text">${esc(k.keyword)}${k.category ? `<span class="kw-cat">${esc(k.category)}</span>` : ''}</div>
+        <div class="kw-bar-bg"><div class="kw-bar" style="width:0%;background:${color};"></div></div>
+      </div>
+      <span class="kw-score">${k.score ?? '—'}</span>`;
+    body.appendChild(item);
+
+    // Animate bar in
+    setTimeout(() => {
+      item.querySelector('.kw-bar').style.width = pct + '%';
+    }, 50 + i * 30);
+  });
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 </script>
 </body>
