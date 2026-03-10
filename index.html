@@ -270,6 +270,42 @@
     cursor: not-allowed;
   }
 
+  /* Time range */
+  .time-row {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: -16px;
+  }
+
+  .time-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    margin-right: 4px;
+  }
+
+  .time-btn {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .time-btn:hover { border-color: var(--accent-2); color: var(--text); }
+  .time-btn.active {
+    background: var(--accent-2);
+    border-color: var(--accent-2);
+    color: #0a0a0f;
+    font-weight: 600;
+  }
+
   /* Status */
   .status-bar {
     font-family: 'JetBrains Mono', monospace;
@@ -545,6 +581,13 @@
       <button class="field-btn" data-field="physics">Physics</button>
       <button class="field-btn" data-field="math">Math</button>
       <button class="field-btn" data-field="q-bio">Biology</button>
+    </div>
+
+    <div class="controls time-row">
+      <span class="time-label">TIME RANGE</span>
+      <button class="time-btn active" data-months="1">Past 1 Month</button>
+      <button class="time-btn" data-months="3">Past 3 Months</button>
+      <button class="time-btn" data-months="5">Past 5 Months</button>
       <button class="refresh-btn" id="refreshBtn" onclick="startDiscovery()">▶ DISCOVER</button>
     </div>
 
@@ -600,6 +643,19 @@ function toggleKeyVis() {
 document.querySelectorAll('.field-btn').forEach(btn => {
   btn.addEventListener('click', () => btn.classList.toggle('active'));
 });
+
+// -- Time range buttons (single select) --
+document.querySelectorAll('.time-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+function getSelectedMonths() {
+  const active = document.querySelector('.time-btn.active');
+  return active ? parseInt(active.dataset.months) : 1;
+}
 
 // -- Helpers --
 function setStatus(msg, show = true) {
@@ -701,28 +757,38 @@ async function startDiscovery() {
 
   const fieldLabels = [...document.querySelectorAll('.field-btn.active')].map(b => b.textContent);
   const model = document.getElementById('modelSelect').value.split('/').pop();
+  const months = getSelectedMonths();
+
+  // Calculate date range
+  const now = new Date();
+  const startDate = new Date(now);
+  startDate.setMonth(startDate.getMonth() - months);
+  const startStr = startDate.toISOString().split('T')[0];
+  const todayStr = now.toISOString().split('T')[0];
+  const rangeLabel = months === 1 ? 'past month' : `past ${months} months`;
 
   try {
     // Step 1: Discover hot topics
-    setStatus(`[${model}] Searching arXiv for trending papers in ${fieldLabels.join(', ')}...`);
+    setStatus(`[${model}] Searching arXiv for trending papers (${rangeLabel}) in ${fieldLabels.join(', ')}...`);
 
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    const systemPrompt = `You are a research trend discovery engine. You search the web for the latest arXiv papers and academic discussions, then return structured JSON.
+    const systemPrompt = `You are a research trend discovery engine. You search the web for arXiv papers and academic discussions within a specific time window, then return structured JSON.
 
 IMPORTANT: You MUST return ONLY a valid JSON array. No markdown code fences, no explanation, no preamble. Start your response with [ and end with ].`;
 
-    const userPrompt = `Today is ${todayStr}. Search the web for the LATEST trending and popular arXiv papers in these fields: ${fieldLabels.join(', ')}.
+    const userPrompt = `Today is ${todayStr}. Search the web for the most TRENDING and POPULAR arXiv papers in these fields: ${fieldLabels.join(', ')}.
+
+TIME RANGE: Only include papers published between ${startStr} and ${todayStr} (the ${rangeLabel}). This is critical — do NOT include papers outside this window.
 
 Look for:
-- Papers posted in the last 7 days on arXiv
+- Papers posted on arXiv within this ${rangeLabel} time window
 - Papers generating buzz on social media (Twitter/X, Reddit, HuggingFace)
 - Papers from major labs (Google, Meta, OpenAI, DeepMind, Microsoft, Apple, etc.)
 - Breakthrough results, state-of-the-art methods, novel architectures
+- Most cited or discussed papers within this period
 
 Search arXiv, Hugging Face papers page, Twitter/X discussions about new papers, Reddit r/MachineLearning, and Papers With Code.
 
-Return a JSON array of 4-6 trending topic clusters. Each element:
+Return a JSON array of 4-8 trending topic clusters. For a ${months}-month window, aim for more topics and more papers per topic. Each element:
 {
   "topic": "Short topic name (2-5 words)",
   "description": "One sentence describing why this is trending",
@@ -733,12 +799,13 @@ Return a JSON array of 4-6 trending topic clusters. Each element:
       "arxiv_id": "2503.XXXXX or empty string",
       "abstract_snippet": "1-2 sentence key finding",
       "field": "cs.AI",
-      "date": "2025-03-XX"
+      "date": "YYYY-MM-DD"
     }
   ]
 }
 
-Each topic should have 2-5 papers. Return ONLY the JSON array.`;
+${months >= 3 ? 'Since this is a longer time range, include 5-8 topic clusters with 3-5 papers each to give a comprehensive overview.' : 'Include 4-6 topic clusters with 2-4 papers each.'}
+Return ONLY the JSON array.`;
 
     const result = await callLLM(userPrompt, systemPrompt);
 
@@ -836,9 +903,11 @@ function renderTopics(topics) {
 
   // Show model/time info
   const model = document.getElementById('modelSelect').value;
+  const months = getSelectedMonths();
+  const rangeText = months === 1 ? 'Past 1 month' : `Past ${months} months`;
   const infoDiv = document.createElement('div');
   infoDiv.style.cssText = 'text-align:center; padding:20px; font-family:JetBrains Mono,monospace; font-size:0.72rem; color:var(--text-dim);';
-  infoDiv.textContent = `Generated by ${model} via OpenRouter · ${new Date().toLocaleTimeString()}`;
+  infoDiv.textContent = `${rangeText} · Generated by ${model} via OpenRouter · ${new Date().toLocaleTimeString()}`;
   grid.appendChild(infoDiv);
 }
 
