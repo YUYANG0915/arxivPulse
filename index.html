@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>arXiv Pulse — Today's Hot Research</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;600&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e8e8f0;
+    --text-dim: #8888a0;
+    --accent: #ff6b35;
+    --accent-glow: #ff6b3540;
+    --accent-2: #00d4aa;
+    --accent-3: #7c6aff;
+    --accent-4: #ff4d6a;
+    --accent-5: #ffd43b;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Gradient orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb-1 { width: 600px; height: 600px; background: var(--accent); top: -200px; right: -200px; }
+  .orb-2 { width: 500px; height: 500px; background: var(--accent-3); bottom: -100px; left: -200px; }
+  .orb-3 { width: 400px; height: 400px; background: var(--accent-2); top: 50%; left: 50%; transform: translate(-50%, -50%); }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    padding: 48px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 3rem;
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+
+  .logo span { color: var(--accent); }
+
+  .tagline {
+    font-size: 1.05rem;
+    color: var(--text-dim);
+    margin-top: 8px;
+    font-weight: 300;
+  }
+
+  .date-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--accent-2);
+    background: #00d4aa12;
+    border: 1px solid #00d4aa30;
+    padding: 6px 14px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+
+  .pulse-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    background: var(--accent-2);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 #00d4aa60; }
+    50% { opacity: 0.6; box-shadow: 0 0 0 8px #00d4aa00; }
+  }
+
+  /* API Config */
+  .api-config {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .api-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .api-field {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .api-field label {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .key-input-wrap {
+    display: flex;
+    gap: 0;
+  }
+
+  .key-input-wrap input {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px 0 0 8px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .key-input-wrap input:focus { border-color: var(--accent); }
+
+  .toggle-vis {
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    transition: background 0.2s;
+  }
+
+  .toggle-vis:hover { background: var(--border); }
+
+  .api-field select {
+    width: 100%;
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238888a0' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+
+  .api-field select:focus { border-color: var(--accent); }
+
+  .api-hint {
+    margin-top: 10px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  .api-hint a {
+    color: var(--accent-2);
+    text-decoration: none;
+  }
+
+  .api-hint a:hover { text-decoration: underline; }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .field-btn {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 8px 18px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.25s;
+  }
+
+  .field-btn:hover { border-color: var(--accent); color: var(--text); }
+  .field-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  .refresh-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 8px 20px;
+    border-radius: 100px;
+    border: 1px solid var(--accent-2);
+    background: transparent;
+    color: var(--accent-2);
+    cursor: pointer;
+    margin-left: auto;
+    transition: all 0.25s;
+  }
+
+  .refresh-btn:hover {
+    background: var(--accent-2);
+    color: var(--bg);
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* Status */
+  .status-bar {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 32px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+
+  .status-bar.visible { display: flex; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Topic Sections */
+  .topics-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+    padding-bottom: 80px;
+  }
+
+  .topic-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    animation: fadeUp 0.5s ease-out both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .topic-header {
+    padding: 24px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .topic-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+
+  .topic-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    flex: 1;
+  }
+
+  .topic-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    background: var(--surface-2);
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+  }
+
+  .papers-list {
+    padding: 8px;
+  }
+
+  .paper-card {
+    padding: 20px;
+    border-radius: 8px;
+    transition: background 0.2s;
+    cursor: pointer;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .paper-card:hover { background: var(--surface-2); }
+
+  .paper-title-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .paper-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    background: var(--bg);
+    width: 24px; height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .paper-title {
+    font-weight: 600;
+    font-size: 1rem;
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  .paper-meta {
+    margin-top: 8px;
+    margin-left: 36px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .paper-authors {
+    font-style: italic;
+    margin-bottom: 4px;
+  }
+
+  .paper-tags {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .paper-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--bg);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-dim);
+  }
+
+  .empty-state h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+
+  .empty-state p { max-width: 500px; margin: 0 auto 24px; line-height: 1.6; }
+
+  .start-btn {
+    font-family: 'Source Sans 3', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 14px 36px;
+    border-radius: 100px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.25s;
+    box-shadow: 0 0 30px var(--accent-glow);
+  }
+
+  .start-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 40px var(--accent-glow);
+  }
+
+  /* Error */
+  .error-msg {
+    background: #ff4d6a15;
+    border: 1px solid #ff4d6a40;
+    color: var(--accent-4);
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+    display: none;
+  }
+
+  .error-msg.visible { display: block; }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .logo { font-size: 2rem; }
+    .header-top { flex-direction: column; align-items: flex-start; }
+    .topic-header { padding: 18px 20px; }
+    .paper-card { padding: 16px; }
+    .paper-meta { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <div class="container">
+    <header>
+      <div class="header-top">
+        <div>
+          <div class="logo">arXiv<span>Pulse</span></div>
+          <p class="tagline">AI-powered discovery of today's hottest research topics</p>
+        </div>
+        <div class="date-badge">
+          <span class="pulse-dot"></span>
+          <span id="todayDate"></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- API Key Config -->
+    <div class="api-config" id="apiConfig">
+      <div class="api-row">
+        <div class="api-field">
+          <label for="apiKey">OpenRouter API Key</label>
+          <div class="key-input-wrap">
+            <input type="password" id="apiKey" placeholder="sk-or-v1-..." spellcheck="false" autocomplete="off" />
+            <button class="toggle-vis" onclick="toggleKeyVis()" title="Show/hide key">👁</button>
+          </div>
+        </div>
+        <div class="api-field">
+          <label for="modelSelect">Model</label>
+          <select id="modelSelect">
+            <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+            <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+            <option value="google/gemini-2.5-flash-preview">Gemini 2.5 Flash</option>
+            <option value="openai/gpt-4o">GPT-4o</option>
+            <option value="deepseek/deepseek-chat-v3-0324">DeepSeek V3</option>
+            <option value="meta-llama/llama-4-maverick">Llama 4 Maverick</option>
+          </select>
+        </div>
+      </div>
+      <p class="api-hint">Your key stays in your browser only. Get one free at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a></p>
+    </div>
+
+    <div class="controls" id="controls">
+      <button class="field-btn active" data-field="cs.AI">AI</button>
+      <button class="field-btn active" data-field="cs.LG">Machine Learning</button>
+      <button class="field-btn" data-field="cs.CL">NLP</button>
+      <button class="field-btn" data-field="cs.CV">Computer Vision</button>
+      <button class="field-btn" data-field="cs.RO">Robotics</button>
+      <button class="field-btn" data-field="physics">Physics</button>
+      <button class="field-btn" data-field="math">Math</button>
+      <button class="field-btn" data-field="q-bio">Biology</button>
+      <button class="refresh-btn" id="refreshBtn" onclick="startDiscovery()">▶ DISCOVER</button>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="status-bar" id="statusBar">
+      <div class="spinner"></div>
+      <span class="status-text" id="statusText">Initializing...</span>
+    </div>
+
+    <div id="content">
+      <div class="empty-state" id="emptyState">
+        <h2>Ready to explore?</h2>
+        <p>Select your fields of interest above, then hit Discover. Claude will search arXiv for the latest trending topics and papers in real-time.</p>
+        <button class="start-btn" onclick="startDiscovery()">Discover Today's Hot Papers</button>
+      </div>
+    </div>
+
+    <div class="topics-grid" id="topicsGrid" style="display:none;"></div>
+  </div>
+
+<script>
+// -- Config --
+const TOPIC_COLORS = [
+  { bg: '#ff6b3518', border: '#ff6b3550', text: '#ff6b35' },
+  { bg: '#00d4aa18', border: '#00d4aa50', text: '#00d4aa' },
+  { bg: '#7c6aff18', border: '#7c6aff50', text: '#7c6aff' },
+  { bg: '#ff4d6a18', border: '#ff4d6a50', text: '#ff4d6a' },
+  { bg: '#ffd43b18', border: '#ffd43b50', text: '#ffd43b' },
+  { bg: '#38bdf818', border: '#38bdf850', text: '#38bdf8' },
+];
+
+const TOPIC_EMOJIS = ['🔬','🧠','💡','⚡','🌐','🔭','🧬','📐','🤖','🎯','🔮','📊'];
+
+// -- State --
+let isRunning = false;
+
+// -- Date --
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-US', {
+  weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
+});
+
+// -- Load saved API key from memory --
+const savedKey = '';
+// We don't use localStorage; key must be entered each session.
+
+// -- Toggle key visibility --
+function toggleKeyVis() {
+  const inp = document.getElementById('apiKey');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+// -- Field buttons --
+document.querySelectorAll('.field-btn').forEach(btn => {
+  btn.addEventListener('click', () => btn.classList.toggle('active'));
+});
+
+// -- Helpers --
+function setStatus(msg, show = true) {
+  const bar = document.getElementById('statusBar');
+  const text = document.getElementById('statusText');
+  bar.classList.toggle('visible', show);
+  text.textContent = msg;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function clearError() {
+  document.getElementById('errorMsg').classList.remove('visible');
+}
+
+function getSelectedFields() {
+  return [...document.querySelectorAll('.field-btn.active')].map(b => b.dataset.field);
+}
+
+// -- OpenRouter API call --
+async function callLLM(userPrompt, systemPrompt) {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const model = document.getElementById('modelSelect').value;
+
+  if (!apiKey) {
+    throw new Error('Please enter your OpenRouter API key first.');
+  }
+
+  const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': window.location.href,
+      'X-Title': 'arXiv Pulse'
+    },
+    body: JSON.stringify({
+      model: model,
+      max_tokens: 4000,
+      temperature: 0.4,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      // Enable web search via OpenRouter plugins
+      plugins: [{ id: 'web' }]
+    })
+  });
+
+  if (!resp.ok) {
+    const err = await resp.text();
+    let errMsg = `API error ${resp.status}`;
+    try {
+      const parsed = JSON.parse(err);
+      errMsg = parsed.error?.message || errMsg;
+    } catch(e) {}
+    throw new Error(errMsg);
+  }
+
+  return resp.json();
+}
+
+function extractText(data) {
+  // OpenRouter returns OpenAI-compatible format
+  if (data.choices && data.choices.length > 0) {
+    return data.choices[0].message?.content || '';
+  }
+  return '';
+}
+
+// -- Main Discovery Flow --
+async function startDiscovery() {
+  if (isRunning) return;
+  isRunning = true;
+
+  const fields = getSelectedFields();
+  if (fields.length === 0) {
+    showError('Please select at least one field.');
+    isRunning = false;
+    return;
+  }
+
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) {
+    showError('Please enter your OpenRouter API key above.');
+    isRunning = false;
+    return;
+  }
+
+  clearError();
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('topicsGrid').style.display = 'flex';
+  document.getElementById('topicsGrid').innerHTML = '';
+  document.getElementById('refreshBtn').disabled = true;
+
+  const fieldLabels = [...document.querySelectorAll('.field-btn.active')].map(b => b.textContent);
+  const model = document.getElementById('modelSelect').value.split('/').pop();
+
+  try {
+    // Step 1: Discover hot topics
+    setStatus(`[${model}] Searching arXiv for trending papers in ${fieldLabels.join(', ')}...`);
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const systemPrompt = `You are a research trend discovery engine. You search the web for the latest arXiv papers and academic discussions, then return structured JSON.
+
+IMPORTANT: You MUST return ONLY a valid JSON array. No markdown code fences, no explanation, no preamble. Start your response with [ and end with ].`;
+
+    const userPrompt = `Today is ${todayStr}. Search the web for the LATEST trending and popular arXiv papers in these fields: ${fieldLabels.join(', ')}.
+
+Look for:
+- Papers posted in the last 7 days on arXiv
+- Papers generating buzz on social media (Twitter/X, Reddit, HuggingFace)
+- Papers from major labs (Google, Meta, OpenAI, DeepMind, Microsoft, Apple, etc.)
+- Breakthrough results, state-of-the-art methods, novel architectures
+
+Search arXiv, Hugging Face papers page, Twitter/X discussions about new papers, Reddit r/MachineLearning, and Papers With Code.
+
+Return a JSON array of 4-6 trending topic clusters. Each element:
+{
+  "topic": "Short topic name (2-5 words)",
+  "description": "One sentence describing why this is trending",
+  "papers": [
+    {
+      "title": "Exact paper title",
+      "authors": "First Author et al.",
+      "arxiv_id": "2503.XXXXX or empty string",
+      "abstract_snippet": "1-2 sentence key finding",
+      "field": "cs.AI",
+      "date": "2025-03-XX"
+    }
+  ]
+}
+
+Each topic should have 2-5 papers. Return ONLY the JSON array.`;
+
+    const result = await callLLM(userPrompt, systemPrompt);
+
+    setStatus('Analyzing and organizing results...');
+
+    let text = extractText(result);
+
+    // Clean potential markdown fences
+    text = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+
+    let topics;
+    try {
+      topics = JSON.parse(text);
+    } catch (e) {
+      // Try to extract JSON array from text
+      const match = text.match(/\[[\s\S]*\]/);
+      if (match) {
+        topics = JSON.parse(match[0]);
+      } else {
+        console.error('Raw response:', text);
+        throw new Error('Could not parse topics from AI response. The model may not support web search — try a different model.');
+      }
+    }
+
+    if (!Array.isArray(topics) || topics.length === 0) {
+      throw new Error('No topics discovered. Try different fields or a different model.');
+    }
+
+    // Step 2: Render topics
+    setStatus('Rendering results...', true);
+    renderTopics(topics);
+    setStatus('', false);
+
+  } catch (err) {
+    console.error(err);
+    showError(`Discovery failed: ${err.message}`);
+    setStatus('', false);
+  }
+
+  document.getElementById('refreshBtn').disabled = false;
+  isRunning = false;
+}
+
+function renderTopics(topics) {
+  const grid = document.getElementById('topicsGrid');
+  grid.innerHTML = '';
+
+  topics.forEach((topic, ti) => {
+    const color = TOPIC_COLORS[ti % TOPIC_COLORS.length];
+    const emoji = TOPIC_EMOJIS[ti % TOPIC_EMOJIS.length];
+    const papers = topic.papers || [];
+
+    const section = document.createElement('div');
+    section.className = 'topic-section';
+    section.style.animationDelay = `${ti * 0.1}s`;
+
+    const papersHTML = papers.map((p, pi) => {
+      const link = p.arxiv_id
+        ? `https://arxiv.org/abs/${p.arxiv_id}`
+        : `https://arxiv.org/search/?query=${encodeURIComponent(p.title)}&searchtype=all`;
+
+      return `
+        <a class="paper-card" href="${link}" target="_blank" rel="noopener">
+          <div class="paper-title-row">
+            <span class="paper-number">${pi + 1}</span>
+            <span class="paper-title">${escapeHTML(p.title)}</span>
+          </div>
+          <div class="paper-meta">
+            ${p.authors ? `<div class="paper-authors">${escapeHTML(p.authors)}</div>` : ''}
+            ${p.abstract_snippet ? `<div>${escapeHTML(p.abstract_snippet)}</div>` : ''}
+            <div class="paper-tags">
+              ${p.field ? `<span class="paper-tag">${escapeHTML(p.field)}</span>` : ''}
+              ${p.date ? `<span class="paper-tag">${escapeHTML(p.date)}</span>` : ''}
+              ${p.arxiv_id ? `<span class="paper-tag">${escapeHTML(p.arxiv_id)}</span>` : ''}
+            </div>
+          </div>
+        </a>`;
+    }).join('');
+
+    section.innerHTML = `
+      <div class="topic-header">
+        <div class="topic-icon" style="background:${color.bg}; border:1px solid ${color.border}; color:${color.text}">
+          ${emoji}
+        </div>
+        <span class="topic-title">${escapeHTML(topic.topic)}</span>
+        <span class="topic-count">${papers.length} paper${papers.length !== 1 ? 's' : ''}</span>
+      </div>
+      ${topic.description ? `<div style="padding:12px 28px 0; color:var(--text-dim); font-size:0.9rem;">${escapeHTML(topic.description)}</div>` : ''}
+      <div class="papers-list">
+        ${papersHTML}
+      </div>`;
+
+    grid.appendChild(section);
+  });
+
+  // Show model/time info
+  const model = document.getElementById('modelSelect').value;
+  const infoDiv = document.createElement('div');
+  infoDiv.style.cssText = 'text-align:center; padding:20px; font-family:JetBrains Mono,monospace; font-size:0.72rem; color:var(--text-dim);';
+  infoDiv.textContent = `Generated by ${model} via OpenRouter · ${new Date().toLocaleTimeString()}`;
+  grid.appendChild(infoDiv);
+}
+
+function escapeHTML(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+</script>
+</body>
+</html>
